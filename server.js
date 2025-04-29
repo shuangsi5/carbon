@@ -2,7 +2,6 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// 定义MIME类型
 const mimeTypes = {
   '.html': 'text/html',
   '.js': 'text/javascript',
@@ -15,8 +14,8 @@ const mimeTypes = {
   '.ico': 'image/x-icon',
 };
 
-// 创建服务器
-const server = http.createServer((req, res) => {
+// 创建请求处理函数
+const requestHandler = (req, res) => {
   console.log(`${req.method} ${req.url}`);
   
   // 处理根路径请求
@@ -32,13 +31,18 @@ const server = http.createServer((req, res) => {
       if (err.code === 'ENOENT') {
         // 文件不存在
         fs.readFile('./404.html', (err, content) => {
+          if (err) {
+            res.writeHead(404);
+            res.end('404 Not Found');
+            return;
+          }
           res.writeHead(404, { 'Content-Type': 'text/html' });
           res.end(content, 'utf-8');
         });
       } else {
         // 服务器错误
         res.writeHead(500);
-        res.end(`服务器错误: ${err.code}`);
+        res.end(`Server Error: ${err.code}`);
       }
     } else {
       // 成功响应
@@ -46,16 +50,16 @@ const server = http.createServer((req, res) => {
       res.end(content, 'utf-8');
     }
   });
-});
+};
 
-// 设置端口
-const PORT = process.env.PORT || 3000;
-
-// 启动服务器
-server.listen(PORT, () => {
-  console.log(`服务器运行在 http://localhost:${PORT}`);
-  console.log(`您可以通过以下方式访问：`);
-  console.log(`1. 本地访问: http://localhost:${PORT}`);
-  console.log(`2. 局域网访问: http://[您的IP地址]:${PORT}`);
-  console.log(`3. 如果配置了域名，可以通过域名访问`);
-}); 
+// 如果是在 Vercel 环境中，导出处理函数
+if (process.env.VERCEL) {
+  module.exports = (req, res) => requestHandler(req, res);
+} else {
+  // 本地开发环境
+  const server = http.createServer(requestHandler);
+  const PORT = process.env.PORT || 3000;
+  server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
